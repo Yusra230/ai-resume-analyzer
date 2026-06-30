@@ -1,5 +1,5 @@
 // src/controllers/resume.controller.js
-const { asyncWrapper } = require('../utils/asyncWrapper');
+const asyncWrapper  = require('../utils/asyncWrapper');
 const AppError = require('../utils/AppError');
 const { extractTextFromPDF, extractTextFromDOCX } = require('../services/parser.service');
 const { analyzeResume } = require('../services/aiAnalyzer.service');

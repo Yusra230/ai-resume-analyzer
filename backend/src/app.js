@@ -47,7 +47,7 @@ app.get('/health', (req, res) => {
 });
 
 // 404 handler for undefined routes
-app.all('*', (req, res) => {
+app.use((req, res) => {
   res.status(404).json({ status: 'fail', message: `Route ${req.originalUrl} not found.` });
 });
 
