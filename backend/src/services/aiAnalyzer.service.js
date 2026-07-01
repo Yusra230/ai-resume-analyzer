@@ -1,53 +1,54 @@
-// src/services/aiAnalyzer.service.js
 const { callGeminiWithTimeout } = require('../config/gemini');
 const AppError = require('../utils/AppError');
-const { AI_TIMEOUT_MS } = require('../config/constants');
+const { AI_TIMEOUT_MS, MAX_RESUME_CHARS, MAX_JOB_DESC_CHARS } = require('../config/constants');
 
-// Helper: extract JSON from a mixed response
+// Improved JSON extraction (tolerate trailing comma, incomplete arrays)
 const extractJSON = (text) => {
-  // Find the first JSON object in the text
-  const match = text.match(/\{[\s\S]*\}/);
-  if (!match) return null;
+  // Remove markdown fences
+  let cleaned = text.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
 
-  let jsonStr = match[0];
-  // Clean common issues: trailing commas in objects/arrays
-  jsonStr = jsonStr
-    .replace(/,\s*}/g, '}')
-    .replace(/,\s*]/g, ']')
-    .trim();
+  // Try to find the first { and the last } and grab between
+  const start = cleaned.indexOf('{');
+  const end = cleaned.lastIndexOf('}');
+  if (start === -1 || end === -1 || end < start) return null;
+
+  let jsonStr = cleaned.substring(start, end + 1);
+  // Fix common JSON issues: trailing commas
+  jsonStr = jsonStr.replace(/,\s*}/g, '}').replace(/,\s*]/g, ']');
 
   try {
     return JSON.parse(jsonStr);
   } catch (e) {
-    // Fallback: try to parse after removing markdown fences
-    const cleaned = text.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
-    try {
-      return JSON.parse(cleaned);
-    } catch (e2) {
-      return null;
-    }
+    // If it fails, try to parse after adding missing closing braces (rare)
+    // But likely it's still incomplete, so return null
+    return null;
   }
 };
 
 const analyzeResume = async (resumeText, jobDescription) => {
-  // Shorten the prompt to reduce token usage and ensure concise output
+  const resumeSnippet = resumeText.slice(0, MAX_RESUME_CHARS);
+  const jobSnippet = jobDescription.slice(0, MAX_JOB_DESC_CHARS);
+
+  // Prompt optimized for brevity
   const prompt = `
 You are an expert HR recruiter. Analyze the resume against the job description.
 
-Return a VALID JSON object with exactly these keys:
-- "matchScore": integer 0-100
-- "matchedSkills": array of strings (skills in resume matching job)
-- "missingSkills": array of strings (critical skills missing)
-- "summary": string (2-3 sentences)
-- "improvementTips": array of strings (3-4 recommendations)
+Return a JSON object with these exact keys:
+- "matchScore": number 0-100
+- "matchedSkills": string[] (skills in resume that match job)
+- "missingSkills": string[] (critical skills missing)
+- "summary": string (2 sentences max)
+- "improvementTips": string[] (3 bullet points, each max 8 words)
+- "strengths": string[] (top 3 strengths)
+- "weaknesses": string[] (top 3 weaknesses)
 
-Resume text:
-"""${resumeText.slice(0, 10000)}"""
+Resume:
+"""${resumeSnippet}"""
 
-Job description:
-"""${jobDescription.slice(0, 5000)}"""
+Job Description:
+"""${jobSnippet}"""
 
-Output only the JSON object, no other text.
+Output ONLY the JSON object. No additional text.
 `;
 
   try {
@@ -71,19 +72,15 @@ Output only the JSON object, no other text.
     return parsed;
   } catch (error) {
     console.error('Gemini API Error:', error);
-
-    // Handle specific errors
     if (error.message === 'Gemini API timeout') {
       throw new AppError('AI service is taking too long. Please try again.', 504);
     }
     if (error.status === 429 || error.message?.includes('quota')) {
-      throw new AppError('AI service is currently overloaded. Please wait a moment.', 503);
+      throw new AppError('AI service is currently overloaded. Please wait.', 503);
     }
     if (error.status === 403 || error.message?.includes('API key')) {
-      throw new AppError('Invalid Gemini API key. Please check server configuration.', 500);
+      throw new AppError('Invalid Gemini API key.', 500);
     }
-
-    // Re-throw AppError if already operational, else wrap
     if (error.isOperational) throw error;
     throw new AppError('Failed to analyze resume. Please try again later.', 503);
   }

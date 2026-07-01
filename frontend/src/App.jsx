@@ -1,491 +1,669 @@
-import React, { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 
-const FONT_IMPORT = `
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,450;9..144,600;9..144,700&family=Space+Mono:wght@400;700&family=Work+Sans:wght@300;400;500;600&display=swap');
+const G = `
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garant:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=Syne:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@300;400;500&display=swap');
+*{box-sizing:border-box}
+body{margin:0;background:#0D0B08;font-family:'Syne',sans-serif}
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#3A3020;border-radius:2px}
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+@keyframes shimmer{0%{background-position:-300% center}100%{background-position:300% center}}
+@keyframes breathe{0%,100%{opacity:0.7}50%{opacity:1}}
+.score-ring{transition:stroke-dashoffset 1.8s cubic-bezier(.25,.46,.45,.94)}
+.chip{transition:transform .15s,opacity .15s}
+.chip:hover{transform:scale(1.04)}
+.tip-card{transition:transform .2s,background .2s}
+.tip-card:hover{transform:translateY(-3px)}
+.btn-analyze:hover:not(:disabled){filter:brightness(1.1)}
+.btn-analyze:active:not(:disabled){transform:scale(.98)}
+.gold-text{background:linear-gradient(90deg,#8A7030 0%,#C9A84C 40%,#E8D080 50%,#C9A84C 60%,#8A7030 100%);background-size:300% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:shimmer 6s linear infinite}
+.drop-zone{transition:border-color .2s,background .2s}
+.drop-zone.over{border-color:#C9A84C!important;background:rgba(201,168,76,.07)!important}
+.input-focus{transition:border-color .2s}
+.input-focus:focus{border-color:#C9A84C!important}
+.tab-btn{transition:color .15s,border-color .15s}
+.str-row{animation:fadeUp .45s ease forwards;opacity:0}
+.section-in{animation:fadeUp .55s ease forwards;opacity:0}
+@media(max-width:760px){.two-col{grid-template-columns:1fr!important}.skill-row{grid-template-columns:1fr!important}.stat-row{gap:16px!important}}
 `;
 
-const SKILL_DB = [
-  { name: "React.js", group: "Frontend" },
-  { name: "Node.js", group: "Backend" },
-  { name: "Python", group: "Language" },
-  { name: "MongoDB", group: "Database" },
-  { name: "REST APIs", group: "Backend" },
-  { name: "TypeScript", group: "Language" },
-  { name: "Tailwind CSS", group: "Frontend" },
-  { name: "Git", group: "Tooling" },
-  { name: "Docker", group: "DevOps" },
-  { name: "SQL", group: "Database" },
-  { name: "Team Leadership", group: "Soft Skill" },
-  { name: "Agile/Scrum", group: "Process" },
-  { name: "Figma", group: "Design" },
-  { name: "AWS", group: "DevOps" },
-  { name: "GraphQL", group: "Backend" },
-  { name: "Communication", group: "Soft Skill" },
-];
-
-const GROUP_COLORS = {
-  Frontend: { bg: "#2a2117", border: "#caa05a", text: "#e8c98a" },
-  Backend: { bg: "#1c2420", border: "#7fa88a", text: "#a8d4b6" },
-  Language: { bg: "#241c1f", border: "#c08a8a", text: "#dcb0b0" },
-  Database: { bg: "#1d2128", border: "#7e94b8", text: "#aac0e2" },
-  Tooling: { bg: "#211e28", border: "#9c8ac0", text: "#c7b8e6" },
-  DevOps: { bg: "#28211c", border: "#c2965f", text: "#e4bd8c" },
-  "Soft Skill": { bg: "#23201a", border: "#b8a878", text: "#dccfa0" },
-  Process: { bg: "#1e2424", border: "#7fb0ab", text: "#a8d6d0" },
-  Design: { bg: "#241e23", border: "#c08ab0", text: "#e0aed0" },
+const C = {
+  bg: "#0D0B08", surface: "#131008", card: "#1C1812", cardH: "#231E13",
+  border: "#2B2419", borderL: "#3A3020",
+  gold: "#C9A84C", goldDim: "#7A6428", goldGlow: "rgba(201,168,76,.12)",
+  cream: "#EDE0C4", creamDim: "#8A7B60",
+  sage: "#4E7A58", sageBg: "rgba(78,122,88,.13)", sageBorder: "rgba(78,122,88,.3)",
+  sageText: "#7DB88A",
+  rose: "#8A3535", roseBg: "rgba(138,53,53,.13)", roseBorder: "rgba(138,53,53,.3)",
+  roseText: "#C47070",
 };
 
-function pickSkills(seed) {
-  const shuffled = [...SKILL_DB].sort((a, b) => {
-    const h1 = (a.name.charCodeAt(0) * seed) % 17;
-    const h2 = (b.name.charCodeAt(0) * seed) % 17;
-    return h1 - h2;
-  });
-  return shuffled.slice(0, 9 + (seed % 4));
-}
+const fd = { fontFamily: "'Cormorant Garant', serif" };
+const fm = { fontFamily: "'IBM Plex Mono', monospace" };
 
-function makeAnalysis(fileName) {
-  let seed = 0;
-  for (let i = 0; i < fileName.length; i++) seed += fileName.charCodeAt(i);
-  const score = 58 + (seed % 38);
-  const skills = pickSkills(seed);
-
-  const feedbackPool = [
-    "Your work experience section tells a clear, results-driven story — recruiters will notice the impact metrics right away.",
-    "Strong technical breadth. Your skills section reads as current and relevant to modern full-stack roles.",
-    "Your formatting is clean and scannable — a recruiter could parse this in under eight seconds, which is exactly the goal.",
-    "Good use of action verbs throughout. Phrases like 'engineered', 'shipped', and 'optimized' carry far more weight than passive language.",
-    "Your project descriptions strike a nice balance between technical depth and business outcomes.",
-  ];
-  const feedback = feedbackPool[seed % feedbackPool.length];
-
-  const allSuggestions = [
-    { text: "Add quantifiable metrics to 2–3 bullet points (e.g. 'reduced load time by 40%').", priority: "high" },
-    { text: "Include a concise professional summary at the top — 2 lines max.", priority: "high" },
-    { text: "Your contact section is missing a LinkedIn or portfolio link.", priority: "medium" },
-    { text: "Consider trimming older roles older than 8 years unless highly relevant.", priority: "low" },
-    { text: "Use consistent date formatting across all entries (MM/YYYY).", priority: "medium" },
-    { text: "Add 2–3 more industry keywords to improve ATS keyword matching.", priority: "high" },
-    { text: "Break up dense paragraphs into bullet points for better scanability.", priority: "medium" },
-    { text: "List certifications in a dedicated section rather than inline.", priority: "low" },
-  ];
-  const suggestions = allSuggestions
-    .filter((_, i) => (seed + i) % 2 === 0 || i < 3)
-    .slice(0, 5);
-
-  return { score, skills, feedback, suggestions, fileName };
-}
-
-const PRIORITY_STYLE = {
-  high: { dot: "#d4675a", label: "High impact" },
-  medium: { dot: "#caa05a", label: "Worth fixing" },
-  low: { dot: "#7fa88a", label: "Nice to have" },
+// Dummy results – matches the expected JSON shape exactly
+const DUMMY_RESULTS = {
+  matchScore: 78,
+  candidateSummary: "Experienced full-stack developer with 6 years in fintech and a strong background in React, Node, and cloud infrastructure. Demonstrates solid architectural thinking and a consistent record of delivering scalable solutions.",
+  matchedSkills: ["React", "Node.js", "TypeScript", "AWS", "Docker", "PostgreSQL"],
+  missingSkills: ["Kubernetes", "GraphQL", "CI/CD pipelines", "Python", "MongoDB"],
+  strengths: [
+    "Strong command of modern JavaScript and frontend frameworks.",
+    "Proven ability to design and maintain microservices architectures.",
+    "Excellent communication and team leadership experience.",
+    "Deep understanding of database optimization and caching strategies."
+  ],
+  weaknesses: [
+    "Limited exposure to container orchestration (Kubernetes).",
+    "No professional experience with GraphQL APIs.",
+    "Could strengthen CI/CD automation skills."
+  ],
+  improvementTips: [
+    { title: "Learn Kubernetes basics", description: "Take a hands-on course or set up a local Minikube cluster to understand pods, services, and deployments." },
+    { title: "Explore GraphQL", description: "Build a small project using Apollo Server and React to get comfortable with schema design and resolvers." },
+    { title: "Master CI/CD", description: "Implement a GitHub Actions workflow for automated testing and deployment to a cloud provider." },
+    { title: "Diversify language stack", description: "Pick up Python or Go to broaden your backend capabilities and adaptability." },
+    { title: "Practice system design", description: "Review common system design interview questions and practice whiteboarding high-level architectures." },
+    { title: "Document your projects", description: "Create a portfolio with clear case studies and technical decisions to showcase your impact." }
+  ]
 };
 
-function ScoreGauge({ score }) {
-  const [animated, setAnimated] = useState(0);
-  const r = 88;
-  const circumference = 2 * Math.PI * r;
+export default function App() {
+  const [resumeText, setResumeText] = useState("");
+  const [jobDesc, setJobDesc] = useState("");
+  const [tab, setTab] = useState("paste");
+  const [fileName, setFileName] = useState("");
+  const [dragOver, setDragOver] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [results, setResults] = useState(null);
+  const [err, setErr] = useState("");
+  const [scoreVal, setScoreVal] = useState(0);
+  const fileRef = useRef(null);
 
   useEffect(() => {
-    setAnimated(0);
-    const t = setTimeout(() => setAnimated(score), 200);
-    return () => clearTimeout(t);
-  }, [score]);
-
-  const offset = circumference - (animated / 100) * circumference;
-  const color = score >= 80 ? "#9fc48a" : score >= 60 ? "#caa05a" : "#cf7a6a";
-
-  return (
-    <div className="relative w-56 h-56 mx-auto">
-      <svg viewBox="0 0 200 200" className="w-full h-full -rotate-90">
-        <circle cx="100" cy="100" r={r} fill="none" stroke="#2a2622" strokeWidth="10" />
-        <circle
-          cx="100"
-          cy="100"
-          r={r}
-          fill="none"
-          stroke={color}
-          strokeWidth="10"
-          strokeLinecap="round"
-          strokeDasharray={circumference}
-          strokeDashoffset={offset}
-          style={{ transition: "stroke-dashoffset 1.4s cubic-bezier(0.16, 1, 0.3, 1), stroke 1.4s ease" }}
-        />
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span
-          className="tabular-nums leading-none"
-          style={{ fontFamily: "'Space Mono', monospace", fontSize: "3.6rem", fontWeight: 700, color: "#f3ead9" }}
-        >
-          {animated}
-        </span>
-        <span
-          className="tracking-[0.3em] text-[10px] mt-2 uppercase"
-          style={{ color: "#9c9388", fontFamily: "'Work Sans', sans-serif" }}
-        >
-          ATS Score
-        </span>
-      </div>
-    </div>
-  );
-}
-
-function UploadZone({ onFile }) {
-  const [dragging, setDragging] = useState(false);
-  const inputRef = useRef(null);
-
-  const handleDrop = useCallback(
-    (e) => {
-      e.preventDefault();
-      setDragging(false);
-      const file = e.dataTransfer.files?.[0];
-      if (file) onFile(file);
-    },
-    [onFile]
-  );
-
-  return (
-    <div
-      onDragOver={(e) => {
-        e.preventDefault();
-        setDragging(true);
-      }}
-      onDragLeave={() => setDragging(false)}
-      onDrop={handleDrop}
-      onClick={() => inputRef.current?.click()}
-      className="relative cursor-pointer rounded-2xl transition-all duration-300 group"
-      style={{
-        border: `1px dashed ${dragging ? "#caa05a" : "#3a352e"}`,
-        background: dragging
-          ? "radial-gradient(circle at 50% 30%, rgba(202,160,90,0.08), transparent 70%)"
-          : "radial-gradient(circle at 50% 30%, rgba(255,255,255,0.015), transparent 70%)",
-        padding: "4.5rem 2rem",
-      }}
-    >
-      <input
-        ref={inputRef}
-        type="file"
-        accept=".pdf,.doc,.docx"
-        className="hidden"
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (file) onFile(file);
-        }}
-      />
-      <div className="flex flex-col items-center text-center">
-        <div
-          className="w-16 h-16 rounded-full flex items-center justify-center mb-6 transition-transform duration-500 group-hover:scale-110"
-          style={{ border: "1px solid #caa05a", background: "rgba(202,160,90,0.06)" }}
-        >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#caa05a" strokeWidth="1.5">
-            <path d="M12 16V4M12 4l-4 4M12 4l4 4" strokeLinecap="round" strokeLinejoin="round" />
-            <path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </div>
-        <p
-          style={{ fontFamily: "'Fraunces', serif", fontWeight: 450 }}
-          className="text-[#f3ead9] text-2xl mb-2"
-        >
-          Drop your resume here
-        </p>
-        <p style={{ fontFamily: "'Work Sans', sans-serif" }} className="text-[#9c9388] text-sm">
-          or click to browse · PDF, DOC, DOCX
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function AnalyzingState({ fileName }) {
-  const steps = ["Parsing document structure", "Extracting skills & keywords", "Scoring against ATS rules", "Generating feedback"];
-  const [stepIndex, setStepIndex] = useState(0);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setStepIndex((i) => (i < steps.length - 1 ? i + 1 : i));
-    }, 650);
-    return () => clearInterval(interval);
+    const s = document.createElement("style");
+    s.innerHTML = G;
+    document.head.appendChild(s);
+    return () => document.head.removeChild(s);
   }, []);
 
-  return (
-    <div className="flex flex-col items-center py-20">
-      <div className="relative w-20 h-20 mb-8">
-        <div
-          className="absolute inset-0 rounded-full"
-          style={{ border: "1px solid #3a352e" }}
-        />
-        <div
-          className="absolute inset-0 rounded-full animate-spin"
-          style={{ border: "1px solid transparent", borderTopColor: "#caa05a", animationDuration: "1.1s" }}
-        />
-      </div>
-      <p style={{ fontFamily: "'Fraunces', serif" }} className="text-[#f3ead9] text-xl mb-1">
-        Analyzing {fileName}
-      </p>
-      <p style={{ fontFamily: "'Space Mono', monospace" }} className="text-[#caa05a] text-xs tracking-wider">
-        {steps[stepIndex]}
-      </p>
-      <div className="flex gap-2 mt-6">
-        {steps.map((_, i) => (
-          <div
-            key={i}
-            className="h-[2px] rounded-full transition-all duration-500"
-            style={{
-              width: i <= stepIndex ? "28px" : "12px",
-              background: i <= stepIndex ? "#caa05a" : "#3a352e",
-            }}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
+  useEffect(() => {
+    if (results?.matchScore != null) {
+      const t = setTimeout(() => setScoreVal(results.matchScore), 120);
+      return () => clearTimeout(t);
+    }
+  }, [results]);
 
-function SkillsCard({ skills }) {
-  return (
-    <div
-      className="rounded-2xl p-7"
-      style={{ background: "#1a1714", border: "1px solid #2e2a24" }}
-    >
-      <div className="flex items-center justify-between mb-5">
-        <h3 style={{ fontFamily: "'Fraunces', serif" }} className="text-[#f3ead9] text-lg">
-          Extracted Skills
-        </h3>
-        <span
-          style={{ fontFamily: "'Space Mono', monospace" }}
-          className="text-[10px] text-[#9c9388]"
-        >
-          {skills.length} found
-        </span>
-      </div>
-      <div className="flex flex-wrap gap-2">
-        {skills.map((skill, i) => {
-          const c = GROUP_COLORS[skill.group] || GROUP_COLORS.Tooling;
-          return (
-            <span
-              key={skill.name}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs opacity-0"
-              style={{
-                background: c.bg,
-                border: `1px solid ${c.border}55`,
-                color: c.text,
-                fontFamily: "'Work Sans', sans-serif",
-                animation: `riseIn 0.5s ease forwards`,
-                animationDelay: `${i * 60}ms`,
-              }}
-            >
-              <span style={{ width: 5, height: 5, borderRadius: "50%", background: c.border }} />
-              {skill.name}
-            </span>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
+  const readFile = useCallback(async (file) => {
+    if (!file) return;
+    setFileName(file.name);
+    if (file.type === "text/plain" || file.name.endsWith(".txt")) {
+      setResumeText(await file.text());
+    } else {
+      const reader = new FileReader();
+      reader.onload = (e) => setResumeText("__B64__" + e.target.result.split(",")[1]);
+      reader.readAsDataURL(file);
+    }
+  }, []);
 
-function FeedbackCard({ text }) {
+  const onDrop = useCallback((e) => {
+    e.preventDefault(); setDragOver(false);
+    readFile(e.dataTransfer.files[0]);
+  }, [readFile]);
+
+  const analyze = async () => {
+  if (!resumeText.trim() || !jobDesc.trim()) {
+    setErr("Add your resume and a job description first.");
+    return;
+  }
+  setErr("");
+  setLoading(true);
+  setResults(null);
+  setScoreVal(0);
+
+  try {
+    // Send resume text (or base64) + job description as JSON
+    const response = await fetch('/api/v1/resume/analyze-json', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        resumeText: resumeText,      // could be plain text or "__B64__..."
+        jobDescription: jobDesc
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Analysis failed');
+    }
+
+    const data = await response.json();
+    // The backend returns { status: 'success', data: { ... } }
+    setResults(data.data);        // matches the DUMMY_RESULTS shape
+  } catch (error) {
+    setErr(error.message || 'Something went wrong. Please try again.');
+  } finally {
+    setLoading(false);
+  }
+  };
+
+  const R = 82;
+  const circ = 2 * Math.PI * R;
+  const dashOffset = circ - (scoreVal / 100) * circ;
+  const scoreColor = scoreVal >= 75 ? C.sage : scoreVal >= 50 ? C.gold : C.rose;
+  const scoreLabel = scoreVal >= 75 ? "Strong Match" : scoreVal >= 50 ? "Moderate Match" : "Needs Work";
+
   return (
-    <div
-      className="rounded-2xl p-7 relative overflow-hidden"
-      style={{ background: "linear-gradient(160deg, #221c16, #1a1714)", border: "1px solid #3a3024" }}
-    >
-      <div
-        className="absolute -top-8 -right-8 w-32 h-32 rounded-full opacity-20"
-        style={{ background: "radial-gradient(circle, #caa05a, transparent 70%)" }}
-      />
-      <div className="flex items-start gap-3 relative">
-        <div
-          className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 mt-0.5"
-          style={{ background: "rgba(202,160,90,0.12)", border: "1px solid #caa05a55" }}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#caa05a" strokeWidth="1.6">
-            <path d="M12 2a7 7 0 00-4 12.74V17a1 1 0 001 1h6a1 1 0 001-1v-2.26A7 7 0 0012 2z" strokeLinejoin="round" />
-            <path d="M9 21h6" strokeLinecap="round" />
+    <div style={{ background: C.bg, minHeight: "100vh", color: C.cream }}>
+      {/* ── HEADER ── */}
+      <header style={{
+        position: "sticky", top: 0, zIndex: 99,
+        background: "rgba(13,11,8,.92)", backdropFilter: "blur(14px)",
+        borderBottom: `1px solid ${C.border}`,
+        height: 62, display: "flex", alignItems: "center",
+        padding: "0 32px", justifyContent: "space-between"
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
+            <rect x="1" y="1" width="9" height="24" rx=".5" stroke={C.gold} strokeWidth="1.2"/>
+            <rect x="14" y="1" width="11" height="24" rx=".5" stroke={C.gold} strokeWidth="1.2" opacity=".35"/>
+            <line x1="3.5" y1="6" x2="7.5" y2="6" stroke={C.gold} strokeWidth="1"/>
+            <line x1="3.5" y1="10" x2="7.5" y2="10" stroke={C.gold} strokeWidth="1"/>
+            <line x1="3.5" y1="14" x2="7.5" y2="14" stroke={C.gold} strokeWidth="1"/>
+            <line x1="3.5" y1="18" x2="7.5" y2="18" stroke={C.gold} strokeWidth="1"/>
           </svg>
-        </div>
-        <div>
-          <h3 style={{ fontFamily: "'Fraunces', serif" }} className="text-[#f3ead9] text-base mb-1.5">
-            Overall Feedback
-          </h3>
-          <p
-            style={{ fontFamily: "'Fraunces', serif", fontStyle: "italic", fontWeight: 300 }}
-            className="text-[#d9cfc0] text-[15px] leading-relaxed"
-          >
-            "{text}"
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function SuggestionsCard({ suggestions }) {
-  return (
-    <div
-      className="rounded-2xl p-7"
-      style={{ background: "#1a1714", border: "1px solid #2e2a24" }}
-    >
-      <div className="flex items-center justify-between mb-5">
-        <h3 style={{ fontFamily: "'Fraunces', serif" }} className="text-[#f3ead9] text-lg">
-          Suggested Improvements
-        </h3>
-      </div>
-      <div className="flex flex-col gap-3">
-        {suggestions.map((s, i) => {
-          const p = PRIORITY_STYLE[s.priority];
-          return (
-            <div
-              key={i}
-              className="flex items-start gap-3 pb-3 opacity-0"
-              style={{
-                borderBottom: i < suggestions.length - 1 ? "1px solid #2a2620" : "none",
-                animation: "riseIn 0.5s ease forwards",
-                animationDelay: `${300 + i * 90}ms`,
-              }}
-            >
-              <span
-                className="mt-1.5 w-1.5 h-1.5 rounded-full shrink-0"
-                style={{ background: p.dot }}
-              />
-              <div className="flex-1">
-                <p style={{ fontFamily: "'Work Sans', sans-serif" }} className="text-[#e5dccd] text-sm leading-snug">
-                  {s.text}
-                </p>
-                <span
-                  style={{ fontFamily: "'Space Mono', monospace", color: p.dot }}
-                  className="text-[10px] tracking-wide uppercase"
-                >
-                  {p.label}
-                </span>
-              </div>
+          <div>
+            <div style={{ ...fd, fontSize: 19, fontWeight: 600, lineHeight: 1, letterSpacing: ".02em" }}>
+              <span style={{ color: C.gold }}>Résumé</span>{" "}Oracle
             </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
+            <div style={{ fontSize: 9, letterSpacing: ".22em", color: C.creamDim, textTransform: "uppercase", marginTop: 1 }}>
+              AI · Analysis
+            </div>
+          </div>
+        </div>
+        <div style={{
+          fontSize: 9, letterSpacing: ".2em", textTransform: "uppercase",
+          color: C.creamDim, border: `1px solid ${C.border}`, borderRadius: 2,
+          padding: "4px 10px", fontWeight: 600
+        }}>
+          Powered by Claude
+        </div>
+      </header>
 
-export default function ResumeAnalyzer() {
-  const [stage, setStage] = useState("idle");
-  const [analysis, setAnalysis] = useState(null);
+      <main style={{ maxWidth: 1080, margin: "0 auto", padding: "52px 24px 80px" }}>
 
-  const handleFile = (file) => {
-    setStage("analyzing");
-    setTimeout(() => {
-      setAnalysis(makeAnalysis(file.name));
-      setStage("results");
-    }, 2700);
-  };
-
-  const reset = () => {
-    setStage("idle");
-    setAnalysis(null);
-  };
-
-  return (
-    <div
-      className="min-h-screen w-full flex justify-center px-6 py-14"
-      style={{
-        background:
-          "radial-gradient(circle at 15% 0%, #1f1a14 0%, #14110d 45%, #0e0c0a 100%)",
-      }}
-    >
-      <style>{FONT_IMPORT}</style>
-      <style>{`
-        @keyframes riseIn {
-          from { opacity: 0; transform: translateY(8px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes fadeUp {
-          from { opacity: 0; transform: translateY(14px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
-
-      <div className="w-full max-w-3xl">
-        <div
-          className="text-center mb-12"
-          style={{ animation: "fadeUp 0.7s ease forwards" }}
-        >
-          <p
-            style={{ fontFamily: "'Space Mono', monospace", color: "#caa05a" }}
-            className="text-xs tracking-[0.35em] uppercase mb-3"
-          >
-            Résumé Intelligence
-          </p>
-          <h1
-            style={{ fontFamily: "'Fraunces', serif", fontWeight: 600 }}
-            className="text-[#f3ead9] text-4xl sm:text-5xl mb-3"
-          >
-            The Analyzer
+        {/* ── HERO ── */}
+        <div style={{ textAlign: "center", marginBottom: 52 }}>
+          <div style={{
+            fontSize: 10, letterSpacing: ".28em", textTransform: "uppercase",
+            color: C.gold, marginBottom: 16, fontWeight: 600
+          }}>
+            Intelligent Career Intelligence
+          </div>
+          <h1 style={{
+            ...fd, margin: 0, fontWeight: 300,
+            fontSize: "clamp(38px, 5.5vw, 68px)",
+            lineHeight: 1.08, letterSpacing: "-.01em", color: C.cream
+          }}>
+            Know exactly where you<br/>
+            <em style={{ fontStyle: "italic", color: C.gold }}>stand before you apply.</em>
           </h1>
-          <p style={{ fontFamily: "'Work Sans', sans-serif" }} className="text-[#9c9388] text-sm max-w-md mx-auto">
-            Upload your résumé for an instant ATS compatibility score, extracted skills, and tailored improvement notes.
+          <p style={{
+            margin: "22px auto 0", maxWidth: 460, fontSize: 14.5,
+            color: C.creamDim, lineHeight: 1.75, fontWeight: 400
+          }}>
+            Paste your resume and a job description. Get an instant compatibility score,
+            skills gap breakdown, and editorial-quality improvement advice.
           </p>
         </div>
 
-        {stage === "idle" && (
-          <div style={{ animation: "fadeUp 0.7s ease 0.1s forwards", opacity: 0 }}>
-            <UploadZone onFile={handleFile} />
+        {/* ── INPUT GRID ── */}
+        <div className="two-col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18, marginBottom: 18 }}>
+
+          {/* Resume */}
+          <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 4, overflow: "hidden" }}>
+            <div style={{ display: "flex", borderBottom: `1px solid ${C.border}` }}>
+              {["paste", "upload"].map(t => (
+                <button key={t} className="tab-btn" onClick={() => setTab(t)} style={{
+                  flex: 1, padding: "11px 0",
+                  background: tab === t ? C.cardH : "transparent",
+                  border: "none",
+                  borderBottom: `2px solid ${tab === t ? C.gold : "transparent"}`,
+                  color: tab === t ? C.gold : C.creamDim,
+                  fontSize: 9.5, letterSpacing: ".18em", textTransform: "uppercase",
+                  fontWeight: 700, cursor: "pointer", fontFamily: "'Syne',sans-serif"
+                }}>
+                  {t === "paste" ? "Paste Text" : "Upload File"}
+                </button>
+              ))}
+            </div>
+            <div style={{ padding: 20 }}>
+              <div style={{
+                fontSize: 9.5, letterSpacing: ".22em", textTransform: "uppercase",
+                color: C.gold, marginBottom: 10, fontWeight: 700
+              }}>Your Resume</div>
+
+              {tab === "paste" ? (
+                <textarea
+                  className="input-focus"
+                  value={resumeText.startsWith("__B64__") ? "" : resumeText}
+                  onChange={e => setResumeText(e.target.value)}
+                  placeholder="Paste the full text of your resume here…"
+                  style={{
+                    width: "100%", height: 256, background: C.surface,
+                    border: `1px solid ${C.border}`, borderRadius: 3,
+                    color: C.cream, padding: "14px 16px", fontSize: 12.5,
+                    lineHeight: 1.75, resize: "none", fontFamily: "'Syne',sans-serif"
+                  }}
+                />
+              ) : (
+                <div
+                  className={`drop-zone${dragOver ? " over" : ""}`}
+                  onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+                  onDragLeave={() => setDragOver(false)}
+                  onDrop={onDrop}
+                  onClick={() => fileRef.current?.click()}
+                  style={{
+                    height: 256, border: `1.5px dashed ${C.borderL}`,
+                    borderRadius: 3, display: "flex", flexDirection: "column",
+                    alignItems: "center", justifyContent: "center",
+                    cursor: "pointer", gap: 14, background: C.surface
+                  }}
+                >
+                  <svg width="44" height="44" viewBox="0 0 44 44" fill="none">
+                    <rect x="9" y="3" width="18" height="28" rx="1" stroke={C.gold} strokeWidth="1.3" opacity=".4"/>
+                    <rect x="13" y="3" width="18" height="28" rx="1" stroke={C.gold} strokeWidth="1.3"/>
+                    <line x1="17" y1="11" x2="27" y2="11" stroke={C.gold} strokeWidth="1.1" opacity=".65"/>
+                    <line x1="17" y1="15" x2="27" y2="15" stroke={C.gold} strokeWidth="1.1" opacity=".65"/>
+                    <line x1="17" y1="19" x2="23" y2="19" stroke={C.gold} strokeWidth="1.1" opacity=".65"/>
+                    <circle cx="33" cy="33" r="9" fill={C.card} stroke={C.gold} strokeWidth="1.3"/>
+                    <line x1="33" y1="29.5" x2="33" y2="36.5" stroke={C.gold} strokeWidth="1.5" strokeLinecap="round"/>
+                    <line x1="29.5" y1="33" x2="36.5" y2="33" stroke={C.gold} strokeWidth="1.5" strokeLinecap="round"/>
+                  </svg>
+                  <div style={{ textAlign: "center" }}>
+                    <div style={{ color: C.cream, fontSize: 13.5, fontWeight: 500, marginBottom: 5 }}>
+                      {fileName || "Drop your résumé here"}
+                    </div>
+                    <div style={{ color: C.creamDim, fontSize: 11 }}>PDF or TXT · click to browse</div>
+                  </div>
+                </div>
+              )}
+              <input ref={fileRef} type="file" accept=".txt,.pdf" style={{ display: "none" }}
+                onChange={e => readFile(e.target.files[0])} />
+            </div>
+          </div>
+
+          {/* Job Description */}
+          <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 4 }}>
+            <div style={{ padding: "11px 20px", borderBottom: `1px solid ${C.border}` }}>
+              <div style={{
+                fontSize: 9.5, letterSpacing: ".18em", textTransform: "uppercase",
+                color: C.creamDim, fontWeight: 600
+              }}>Target Role</div>
+            </div>
+            <div style={{ padding: 20 }}>
+              <div style={{
+                fontSize: 9.5, letterSpacing: ".22em", textTransform: "uppercase",
+                color: C.gold, marginBottom: 10, fontWeight: 700
+              }}>Job Description</div>
+              <textarea
+                className="input-focus"
+                value={jobDesc}
+                onChange={e => setJobDesc(e.target.value)}
+                placeholder="Paste the full job description you're applying for…"
+                style={{
+                  width: "100%", height: 256, background: C.surface,
+                  border: `1px solid ${C.border}`, borderRadius: 3,
+                  color: C.cream, padding: "14px 16px", fontSize: 12.5,
+                  lineHeight: 1.75, resize: "none", fontFamily: "'Syne',sans-serif"
+                }}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Error */}
+        {err && (
+          <div style={{
+            background: C.roseBg, border: `1px solid ${C.roseBorder}`,
+            borderRadius: 3, padding: "11px 16px", marginBottom: 16,
+            color: C.roseText, fontSize: 12.5, letterSpacing: ".01em"
+          }}>
+            {err}
           </div>
         )}
 
-        {stage === "analyzing" && <AnalyzingState fileName={analysis?.fileName || "your resume"} />}
+        {/* ── ANALYZE BUTTON ── */}
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 60 }}>
+          <button
+            className="btn-analyze"
+            onClick={analyze}
+            disabled={loading}
+            style={{
+              background: loading ? C.cardH : C.gold,
+              color: loading ? C.gold : C.bg,
+              border: loading ? `1px solid ${C.gold}` : "none",
+              padding: "15px 60px",
+              fontSize: 10, letterSpacing: ".22em", textTransform: "uppercase",
+              fontWeight: 700, cursor: loading ? "not-allowed" : "pointer",
+              borderRadius: 2, fontFamily: "'Syne',sans-serif",
+              transition: "all .25s", minWidth: 240,
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 10
+            }}
+          >
+            {loading ? (
+              <>
+                <svg width="13" height="13" viewBox="0 0 13 13" style={{ animation: "spin 1s linear infinite", flexShrink: 0 }}>
+                  <circle cx="6.5" cy="6.5" r="5" fill="none" stroke={C.gold} strokeWidth="1.5" strokeDasharray="18 10"/>
+                </svg>
+                Analysing your profile…
+              </>
+            ) : "Run Analysis →"}
+          </button>
+        </div>
 
-        {stage === "results" && analysis && (
-          <div className="flex flex-col gap-6">
-            <div
-              className="rounded-2xl p-10 flex flex-col items-center"
-              style={{
-                background: "linear-gradient(180deg, #1c1813, #161310)",
-                border: "1px solid #3a3024",
-                animation: "fadeUp 0.7s ease forwards",
-              }}
-            >
-              <ScoreGauge score={analysis.score} />
-              <p
-                style={{ fontFamily: "'Work Sans', sans-serif" }}
-                className="text-[#9c9388] text-xs mt-4 text-center max-w-xs"
-              >
-                {analysis.score >= 80
-                  ? "Excellent — this resume is well-optimized for ATS screening."
-                  : analysis.score >= 60
-                  ? "Solid foundation, with room to sharpen keyword alignment."
-                  : "Several quick fixes could meaningfully raise this score."}
-              </p>
-            </div>
+        {/* ── RESULTS ── */}
+        {results && (
+          <div style={{ animation: "fadeUp .5s ease forwards" }}>
 
-            <div style={{ animation: "fadeUp 0.7s ease 0.15s forwards", opacity: 0, animationFillMode: "forwards" }}>
-              <SkillsCard skills={analysis.skills} />
-            </div>
+            {/* Score + Summary */}
+            <div className="two-col" style={{ display: "grid", gridTemplateColumns: "270px 1fr", gap: 18, marginBottom: 18 }}>
 
-            <div className="grid sm:grid-cols-2 gap-6">
-              <div style={{ animation: "fadeUp 0.7s ease 0.25s forwards", opacity: 0, animationFillMode: "forwards" }}>
-                <FeedbackCard text={analysis.feedback} />
+              {/* Score Ring */}
+              <div className="section-in" style={{
+                background: C.card, border: `1px solid ${C.border}`,
+                borderRadius: 4, padding: "28px 24px 24px",
+                display: "flex", flexDirection: "column", alignItems: "center", gap: 14
+              }}>
+                <div style={{
+                  fontSize: 9.5, letterSpacing: ".22em", textTransform: "uppercase",
+                  color: C.creamDim, fontWeight: 600
+                }}>Compatibility Score</div>
+
+                <svg width="196" height="196" viewBox="0 0 196 196">
+                  {/* Decorative outer ring */}
+                  <circle cx="98" cy="98" r="94" fill="none" stroke={C.border} strokeWidth=".5"/>
+                  {/* Track */}
+                  <circle cx="98" cy="98" r={R} fill="none" stroke={C.surface} strokeWidth="10"/>
+                  {/* Progress */}
+                  <circle
+                    className="score-ring"
+                    cx="98" cy="98" r={R}
+                    fill="none"
+                    stroke={scoreColor}
+                    strokeWidth="10"
+                    strokeLinecap="round"
+                    strokeDasharray={circ}
+                    strokeDashoffset={dashOffset}
+                    transform="rotate(-90 98 98)"
+                    style={{ filter: `drop-shadow(0 0 6px ${scoreColor}55)` }}
+                  />
+                  {/* Score number */}
+                  <text x="98" y="88" textAnchor="middle"
+                    style={{ fontFamily: "'IBM Plex Mono',monospace" }}
+                    fill={C.cream} fontSize="46" fontWeight="400">
+                    {scoreVal}
+                  </text>
+                  <text x="98" y="108" textAnchor="middle"
+                    style={{ fontFamily: "'Syne',sans-serif" }}
+                    fill={C.creamDim} fontSize="10.5" letterSpacing="2">
+                    OUT OF 100
+                  </text>
+                </svg>
+
+                {/* Label */}
+                <div style={{
+                  fontSize: 11, fontWeight: 700, letterSpacing: ".14em",
+                  color: scoreColor, textTransform: "uppercase",
+                  padding: "5px 14px",
+                  background: scoreVal >= 75 ? C.sageBg : scoreVal >= 50 ? C.goldGlow : C.roseBg,
+                  border: `1px solid ${scoreVal >= 75 ? C.sageBorder : scoreVal >= 50 ? "rgba(201,168,76,.3)" : C.roseBorder}`,
+                  borderRadius: 2
+                }}>
+                  {scoreLabel}
+                </div>
               </div>
-              <div style={{ animation: "fadeUp 0.7s ease 0.3s forwards", opacity: 0, animationFillMode: "forwards" }}>
-                <SuggestionsCard suggestions={analysis.suggestions} />
+
+              {/* Candidate Summary */}
+              <div className="section-in" style={{
+                background: C.card, border: `1px solid ${C.border}`,
+                borderRadius: 4, padding: 28, animationDelay: ".08s"
+              }}>
+                <div style={{
+                  fontSize: 9.5, letterSpacing: ".22em", textTransform: "uppercase",
+                  color: C.creamDim, fontWeight: 600, marginBottom: 18
+                }}>Candidate Profile</div>
+                <p style={{
+                  ...fd, fontSize: 19.5, lineHeight: 1.72, color: C.cream,
+                  margin: 0, fontWeight: 400
+                }}>
+                  {results.candidateSummary}
+                </p>
+
+                {/* Mini stats */}
+                <div className="stat-row" style={{
+                  display: "flex", gap: 32, marginTop: 26,
+                  paddingTop: 20, borderTop: `1px solid ${C.border}`
+                }}>
+                  {[
+                    { label: "Matched Skills", val: results.matchedSkills?.length ?? 0, color: C.sage },
+                    { label: "Skill Gaps", val: results.missingSkills?.length ?? 0, color: C.rose },
+                    { label: "Action Tips", val: results.improvementTips?.length ?? 0, color: C.gold },
+                  ].map(s => (
+                    <div key={s.label}>
+                      <div style={{ ...fm, fontSize: 30, fontWeight: 500, color: s.color, lineHeight: 1 }}>
+                        {s.val}
+                      </div>
+                      <div style={{
+                        fontSize: 9, letterSpacing: ".18em", color: C.creamDim,
+                        textTransform: "uppercase", marginTop: 5
+                      }}>
+                        {s.label}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
 
-            <button
-              onClick={reset}
-              className="mx-auto mt-2 px-6 py-2.5 rounded-full text-sm transition-all duration-300 hover:scale-105"
-              style={{
-                fontFamily: "'Space Mono', monospace",
-                color: "#caa05a",
-                border: "1px solid #caa05a55",
-                background: "transparent",
-              }}
-            >
-              ← Analyze another resume
-            </button>
+            {/* Skills Row */}
+            <div className="skill-row" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18, marginBottom: 18 }}>
+
+              {/* Matched */}
+              <div className="section-in" style={{
+                background: C.card, border: `1px solid ${C.border}`,
+                borderRadius: 4, padding: 24, animationDelay: ".14s"
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 16 }}>
+                  <div style={{ width: 7, height: 7, borderRadius: "50%", background: C.sage, flexShrink: 0 }}/>
+                  <div style={{
+                    fontSize: 9.5, letterSpacing: ".22em", textTransform: "uppercase",
+                    color: C.sage, fontWeight: 700
+                  }}>Matched Skills</div>
+                  <div style={{ ...fm, fontSize: 10.5, color: C.creamDim, marginLeft: "auto" }}>
+                    {results.matchedSkills?.length}
+                  </div>
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+                  {results.matchedSkills?.map((sk, i) => (
+                    <span key={i} className="chip" style={{
+                      background: C.sageBg, border: `1px solid ${C.sageBorder}`,
+                      borderRadius: 2, padding: "5px 11px",
+                      fontSize: 11, color: C.sageText, fontWeight: 500,
+                      letterSpacing: ".04em", cursor: "default",
+                      animation: "fadeUp .4s ease forwards",
+                      animationDelay: `${.14 + i * .05}s`, opacity: 0
+                    }}>
+                      ✓ {sk}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Missing */}
+              <div className="section-in" style={{
+                background: C.card, border: `1px solid ${C.border}`,
+                borderRadius: 4, padding: 24, animationDelay: ".2s"
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 16 }}>
+                  <div style={{ width: 7, height: 7, borderRadius: "50%", background: C.rose, flexShrink: 0 }}/>
+                  <div style={{
+                    fontSize: 9.5, letterSpacing: ".22em", textTransform: "uppercase",
+                    color: C.rose, fontWeight: 700
+                  }}>Skill Gaps</div>
+                  <div style={{ ...fm, fontSize: 10.5, color: C.creamDim, marginLeft: "auto" }}>
+                    {results.missingSkills?.length}
+                  </div>
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+                  {results.missingSkills?.map((sk, i) => (
+                    <span key={i} className="chip" style={{
+                      background: C.roseBg, border: `1px solid ${C.roseBorder}`,
+                      borderRadius: 2, padding: "5px 11px",
+                      fontSize: 11, color: C.roseText, fontWeight: 500,
+                      letterSpacing: ".04em", cursor: "default",
+                      animation: "fadeUp .4s ease forwards",
+                      animationDelay: `${.2 + i * .05}s`, opacity: 0
+                    }}>
+                      ○ {sk}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Strengths & Weaknesses */}
+            <div className="skill-row" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18, marginBottom: 18 }}>
+
+              {/* Strengths */}
+              <div className="section-in" style={{
+                background: C.card, border: `1px solid ${C.border}`,
+                borderRadius: 4, padding: 24, animationDelay: ".24s"
+              }}>
+                <div style={{
+                  fontSize: 9.5, letterSpacing: ".22em", textTransform: "uppercase",
+                  color: C.gold, fontWeight: 700, marginBottom: 18
+                }}>Strengths</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 13 }}>
+                  {results.strengths?.map((s, i) => (
+                    <div key={i} className="str-row" style={{ display: "flex", gap: 12, alignItems: "flex-start", animationDelay: `${.28 + i * .07}s` }}>
+                      <div style={{
+                        width: 20, height: 20, borderRadius: "50%",
+                        background: C.sageBg, border: `1px solid ${C.sageBorder}`,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        flexShrink: 0, marginTop: 1
+                      }}>
+                        <svg width="9" height="9" viewBox="0 0 9 9">
+                          <polyline points="1.5,5 3.5,7.5 7.5,1.5" fill="none" stroke={C.sageText} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </div>
+                      <div style={{ fontSize: 12.5, lineHeight: 1.65, color: "#C5BDB0" }}>{s}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Weaknesses */}
+              <div className="section-in" style={{
+                background: C.card, border: `1px solid ${C.border}`,
+                borderRadius: 4, padding: 24, animationDelay: ".3s"
+              }}>
+                <div style={{
+                  fontSize: 9.5, letterSpacing: ".22em", textTransform: "uppercase",
+                  color: "#7A4040", fontWeight: 700, marginBottom: 18
+                }}>Areas to Develop</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 13 }}>
+                  {results.weaknesses?.map((w, i) => (
+                    <div key={i} className="str-row" style={{ display: "flex", gap: 12, alignItems: "flex-start", animationDelay: `${.34 + i * .07}s` }}>
+                      <div style={{
+                        width: 20, height: 20, borderRadius: "50%",
+                        background: C.roseBg, border: `1px solid ${C.roseBorder}`,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        flexShrink: 0, marginTop: 1
+                      }}>
+                        <div style={{ width: 7, height: 1.5, background: C.rose, borderRadius: 1 }}/>
+                      </div>
+                      <div style={{ fontSize: 12.5, lineHeight: 1.65, color: "#C5BDB0" }}>{w}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Improvement Tips */}
+            <div className="section-in" style={{ animationDelay: ".36s" }}>
+              <div style={{
+                display: "flex", alignItems: "center", gap: 14, marginBottom: 18
+              }}>
+                <div style={{ flex: 1, height: 1, background: C.border }}/>
+                <div style={{
+                  fontSize: 9.5, letterSpacing: ".22em", textTransform: "uppercase",
+                  color: C.creamDim, fontWeight: 700, whiteSpace: "nowrap"
+                }}>
+                  Improvement Tips
+                </div>
+                <div style={{ flex: 1, height: 1, background: C.border }}/>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 14 }}>
+                {results.improvementTips?.map((tip, i) => (
+                  <div key={i} className="tip-card" style={{
+                    background: C.card,
+                    border: `1px solid ${C.border}`,
+                    borderRadius: 4,
+                    padding: "18px 18px 20px",
+                    position: "relative", overflow: "hidden",
+                    animation: "fadeUp .5s ease forwards",
+                    animationDelay: `${.4 + i * .07}s`, opacity: 0,
+                    cursor: "default"
+                  }}>
+                    {/* Top accent bar — varying lengths add rhythm */}
+                    <div style={{
+                      position: "absolute", top: 0, left: 0, right: 0, height: 2,
+                      background: `linear-gradient(90deg, ${C.gold} ${20 + i * 14}%, transparent)`
+                    }}/>
+                    <div style={{ ...fm, fontSize: 10, color: C.goldDim, marginBottom: 9, letterSpacing: ".12em" }}>
+                      {String(i + 1).padStart(2, "0")} —
+                    </div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: C.cream, marginBottom: 8, lineHeight: 1.4 }}>
+                      {tip.title}
+                    </div>
+                    <div style={{ fontSize: 12, color: C.creamDim, lineHeight: 1.72 }}>
+                      {tip.description}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
           </div>
         )}
-      </div>
+
+        {/* Empty state hint */}
+        {!results && !loading && (
+          <div style={{ textAlign: "center", marginTop: 24, opacity: .45 }}>
+            <div style={{ ...fd, fontSize: 16, color: C.creamDim, fontStyle: "italic", fontWeight: 300 }}>
+              Your analysis will appear here
+            </div>
+          </div>
+        )}
+
+      </main>
+
+      {/* ── FOOTER ── */}
+      <footer style={{
+        borderTop: `1px solid ${C.border}`, padding: "20px 32px",
+        display: "flex", justifyContent: "space-between", alignItems: "center"
+      }}>
+        <div style={{ ...fd, fontSize: 13, color: C.creamDim, fontStyle: "italic" }}>
+          Résumé Oracle
+        </div>
+        <div style={{ fontSize: 9.5, letterSpacing: ".18em", color: C.creamDim, textTransform: "uppercase" }}>
+          AI · Career Intelligence
+        </div>
+      </footer>
     </div>
   );
 }

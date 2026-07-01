@@ -1,6 +1,5 @@
-// src/config/gemini.js
 const { GoogleGenerativeAI } = require('@google/generative-ai');
-const { AI_TIMEOUT_MS } = require('./constants');
+const { AI_TIMEOUT_MS, AI_MAX_OUTPUT_TOKENS } = require('./constants');
 
 if (!process.env.GOOGLE_API_KEY) {
   throw new Error('Missing GOOGLE_API_KEY in environment variables');
@@ -8,23 +7,23 @@ if (!process.env.GOOGLE_API_KEY) {
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
 
-// Configure the model (you can change to 'gemini-3.5-pro' for higher accuracy)
 const model = genAI.getGenerativeModel({
-  model: 'gemini-3-flash-preview', 
+  model: 'gemini-3-flash-preview',
   generationConfig: {
     temperature: 0.3,
-    maxOutputTokens: 1500,
-    // Gemini doesn't have a built-in JSON mode, but we'll enforce it via prompt
+    maxOutputTokens: AI_MAX_OUTPUT_TOKENS, // ✅ now 4096
   },
 });
 
-// We'll add a timeout wrapper because Gemini SDK doesn't have built-in timeout
 const callGeminiWithTimeout = async (prompt, timeoutMs) => {
-  const timeoutPromise = new Promise((_, reject) =>
-    setTimeout(() => reject(new Error('Gemini API timeout')), timeoutMs)
-  );
+  let timeoutId;
+  const timeoutPromise = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error('Gemini API timeout')), timeoutMs);
+  });
   const requestPromise = model.generateContent(prompt);
-  return Promise.race([requestPromise, timeoutPromise]);
+  const race = Promise.race([requestPromise, timeoutPromise]);
+  race.finally(() => clearTimeout(timeoutId));
+  return race;
 };
 
 module.exports = { callGeminiWithTimeout, model };
