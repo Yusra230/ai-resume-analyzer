@@ -3,7 +3,7 @@ const express = require('express');
 const upload = require('../../middlewares/upload.middleware');
 const { validateJobDescription } = require('../../middlewares/validation.middleware');
 const { aiRateLimiter } = require('../../middlewares/rateLimiter.middleware');
-const { uploadAndAnalyze } = require('../../controllers/resume.controller');
+const { uploadAndAnalyze, analyzeFromText  } = require('../../controllers/resume.controller');
 
 const router = express.Router();
 
@@ -16,4 +16,15 @@ router.post(
   uploadAndAnalyze
 );
 
+// New JSON endpoint (no file upload)
+router.post(
+  '/analyze-json',
+  aiRateLimiter,
+  express.json(), // middleware to parse JSON body
+  (req, res, next) => {
+    // We'll validate manually inside the controller or use Joi
+    next();
+  },
+  analyzeFromText
+);
 module.exports = router;

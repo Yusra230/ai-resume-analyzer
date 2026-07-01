@@ -43,33 +43,6 @@ const C = {
 const fd = { fontFamily: "'Cormorant Garant', serif" };
 const fm = { fontFamily: "'IBM Plex Mono', monospace" };
 
-// Dummy results – matches the expected JSON shape exactly
-const DUMMY_RESULTS = {
-  matchScore: 78,
-  candidateSummary: "Experienced full-stack developer with 6 years in fintech and a strong background in React, Node, and cloud infrastructure. Demonstrates solid architectural thinking and a consistent record of delivering scalable solutions.",
-  matchedSkills: ["React", "Node.js", "TypeScript", "AWS", "Docker", "PostgreSQL"],
-  missingSkills: ["Kubernetes", "GraphQL", "CI/CD pipelines", "Python", "MongoDB"],
-  strengths: [
-    "Strong command of modern JavaScript and frontend frameworks.",
-    "Proven ability to design and maintain microservices architectures.",
-    "Excellent communication and team leadership experience.",
-    "Deep understanding of database optimization and caching strategies."
-  ],
-  weaknesses: [
-    "Limited exposure to container orchestration (Kubernetes).",
-    "No professional experience with GraphQL APIs.",
-    "Could strengthen CI/CD automation skills."
-  ],
-  improvementTips: [
-    { title: "Learn Kubernetes basics", description: "Take a hands-on course or set up a local Minikube cluster to understand pods, services, and deployments." },
-    { title: "Explore GraphQL", description: "Build a small project using Apollo Server and React to get comfortable with schema design and resolvers." },
-    { title: "Master CI/CD", description: "Implement a GitHub Actions workflow for automated testing and deployment to a cloud provider." },
-    { title: "Diversify language stack", description: "Pick up Python or Go to broaden your backend capabilities and adaptability." },
-    { title: "Practice system design", description: "Review common system design interview questions and practice whiteboarding high-level architectures." },
-    { title: "Document your projects", description: "Create a portfolio with clear case studies and technical decisions to showcase your impact." }
-  ]
-};
-
 export default function App() {
   const [resumeText, setResumeText] = useState("");
   const [jobDesc, setJobDesc] = useState("");
@@ -141,6 +114,7 @@ export default function App() {
 
     const data = await response.json();
     // The backend returns { status: 'success', data: { ... } }
+    console.log(data.data)
     setResults(data.data);        // matches the DUMMY_RESULTS shape
   } catch (error) {
     setErr(error.message || 'Something went wrong. Please try again.');
@@ -439,7 +413,7 @@ export default function App() {
                   ...fd, fontSize: 19.5, lineHeight: 1.72, color: C.cream,
                   margin: 0, fontWeight: 400
                 }}>
-                  {results.candidateSummary}
+                  {results.summary}
                 </p>
 
                 {/* Mini stats */}
@@ -628,11 +602,9 @@ export default function App() {
                       {String(i + 1).padStart(2, "0")} —
                     </div>
                     <div style={{ fontSize: 13, fontWeight: 600, color: C.cream, marginBottom: 8, lineHeight: 1.4 }}>
-                      {tip.title}
+                      {tip}
                     </div>
-                    <div style={{ fontSize: 12, color: C.creamDim, lineHeight: 1.72 }}>
-                      {tip.description}
-                    </div>
+                 
                   </div>
                 ))}
               </div>
