@@ -9,6 +9,8 @@ const { ALLOWED_ORIGIN, NODE_ENV } = require('./config/constants');
 const resumeRoutes = require('./routes/v1/resume.routes');
 
 const app = express();
+// Trust proxy (required for Railway/Render)
+app.set('trust proxy', 1);
 
 // ----- Standard Middlewares (Security & Logging) -----
 
