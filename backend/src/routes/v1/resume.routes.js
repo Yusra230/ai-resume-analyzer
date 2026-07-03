@@ -10,7 +10,7 @@ const router = express.Router();
 // POST /api/v1/resume/analyze
 router.post(
   '/analyze',
-  aiRateLimiter, // ⭐ Strict rate limit to protect your OpenAI costs
+  aiRateLimiter, // Strict rate limit to protect Gemini costs
   upload.single('resume'), // Expect form-data field named "resume"
   validateJobDescription, // Validate the jobDescription field in body
   uploadAndAnalyze

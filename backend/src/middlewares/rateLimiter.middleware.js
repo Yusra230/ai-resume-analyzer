@@ -11,7 +11,6 @@ const aiRateLimiter = rateLimit({
     status: 'fail',
     message: `Too many analysis requests. Please wait and try again later. Max ${RATE_LIMIT_MAX_REQUESTS} per ${RATE_LIMIT_WINDOW_MS / 60000} minutes.`,
   },
-  // ✅ Removed custom keyGenerator – defaults to req.ip
 });
 
 // Soft global limiter
@@ -21,7 +20,6 @@ const globalLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: 'Too many requests from this IP, please try again later.',
-  // No keyGenerator needed
 });
 
 module.exports = { aiRateLimiter, globalLimiter };

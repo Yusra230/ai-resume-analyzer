@@ -31,24 +31,24 @@ const analyzeResume = async (resumeText, jobDescription) => {
 
   // Prompt optimized for brevity
   const prompt = `
-You are an expert HR recruiter. Analyze the resume against the job description.
+    You are an expert HR recruiter. Analyze the resume against the job description.
 
-Return a JSON object with these exact keys:
-- "matchScore": number 0-100
-- "matchedSkills": string[] (skills in resume that match job)
-- "missingSkills": string[] (critical skills missing)
-- "summary": string (2 sentences max)
-- "improvementTips": string[] (3 bullet points, each max 8 words)
-- "strengths": string[] (top 3 strengths)
-- "weaknesses": string[] (top 3 weaknesses)
+    Return a JSON object with these exact keys:
+    - "matchScore": number 0-100
+    - "matchedSkills": string[] (skills in resume that match job)
+    - "missingSkills": string[] (critical skills missing)
+    - "summary": string (2 sentences max)
+    - "improvementTips": string[] (4 bullet points, each max 8 words)
+    - "strengths": string[] (top 3 strengths)
+    - "weaknesses": string[] (top 3 weaknesses)
 
-Resume:
-"""${resumeSnippet}"""
+    Resume:
+    """${resumeSnippet}"""
 
-Job Description:
-"""${jobSnippet}"""
+    Job Description:
+    """${jobSnippet}"""
 
-Output ONLY the JSON object. No additional text.
+    Output ONLY the JSON object. No additional text.
 `;
 
   try {
