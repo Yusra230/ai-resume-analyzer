@@ -7,7 +7,7 @@ const { globalLimiter } = require('./middlewares/rateLimiter.middleware');
 const errorHandler = require('./middlewares/errorHandler.middleware');
 const { ALLOWED_ORIGIN, NODE_ENV } = require('./config/constants');
 const resumeRoutes = require('./routes/v1/resume.routes');
-
+const allowedOrigin = process.env.FRONTEND_URL || '*';
 const app = express();
 app.use(express.json({ limit: '1mb' })); // Limit JSON payload to 1MB
 
@@ -22,8 +22,7 @@ app.use(helmet());
 // 2. CORS - Restrict to your frontend only
 app.use(
   cors({
-    // 🔽 Replace the entire origin line with this:
-    origin: '*',
+    origin: allowedOrigin,
     optionsSuccessStatus: 200,
     methods: ['GET', 'POST'],
     allowedHeaders: ['Content-Type'],
