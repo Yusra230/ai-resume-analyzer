@@ -25,6 +25,7 @@ function AppContent() {
   const [scoreVal, setScoreVal] = useState(0);
   const fileRef = useRef(null);
   const styleRef = useRef(null);
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
   // Inject global CSS
   useEffect(() => {
@@ -95,7 +96,7 @@ function AppContent() {
     setScoreVal(0);
 
     try {
-      const response = await fetch("/api/v1/resume/analyze-json", {
+      const response = await fetch(`${API_BASE_URL}/api/v1/resume/analyze-json`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

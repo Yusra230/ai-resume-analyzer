@@ -18,7 +18,9 @@ app.use(helmet());
 // 2. CORS - Restrict to your frontend only
 app.use(
   cors({
-    origin: ALLOWED_ORIGIN,
+    origin: process.env.NODE_ENV === 'production' 
+      ? 'https://your-frontend-url.vercel.app' 
+      : ALLOWED_ORIGIN, // 'http://localhost:5173' for development
     optionsSuccessStatus: 200,
     methods: ['GET', 'POST'],
     allowedHeaders: ['Content-Type'],
