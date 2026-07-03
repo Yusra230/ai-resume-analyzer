@@ -7,10 +7,6 @@ const { uploadAndAnalyze, analyzeFromText  } = require('../../controllers/resume
 
 const router = express.Router();
 
-// 🔥 ADD THIS DEBUG ROUTE (to check if the router is mounted)
-router.get('/test-router', (req, res) => {
-  res.json({ message: 'Resume router is mounted and working!' });
-});
 
 // POST /api/v1/resume/analyze
 router.post(
