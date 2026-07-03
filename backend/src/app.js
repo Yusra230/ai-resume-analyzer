@@ -9,6 +9,8 @@ const { ALLOWED_ORIGIN, NODE_ENV } = require('./config/constants');
 const resumeRoutes = require('./routes/v1/resume.routes');
 
 const app = express();
+app.use(express.json({ limit: '1mb' })); // Limit JSON payload to 1MB
+
 // Trust proxy (required for Railway/Render)
 app.set('trust proxy', 1);
 
@@ -28,8 +30,6 @@ app.use(
   })
 );
 
-// 3. Parse JSON bodies (but not for file uploads, multer handles that)
-app.use(express.json({ limit: '1mb' })); // Limit JSON payload to 1MB
 
 // 4. Logging
 if (NODE_ENV === 'development') {

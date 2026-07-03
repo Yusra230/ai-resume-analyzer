@@ -25,7 +25,6 @@ router.post(
 router.post(
   '/analyze-json',
   aiRateLimiter,
-  express.json(), // middleware to parse JSON body
   (req, res, next) => {
     // We'll validate manually inside the controller or use Joi
     next();
