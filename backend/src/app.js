@@ -43,23 +43,12 @@ app.use(globalLimiter);
 
 // ----- Routes -----
 app.use('/api/v1/resume', resumeRoutes);
-
+console.log('✅ Routes mounted successfully');
 // Health check endpoint (useful for load balancers)
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok', environment: NODE_ENV });
 });
 
-// ============================================
-// 🔥 ADD TEST ROUTES HERE (Remove later)
-// ============================================
-app.get('/', (req, res) => {
-  res.json({ status: 'ok', message: 'Backend is running!' });
-});
-
-app.get('/test', (req, res) => {
-  res.json({ status: 'ok', message: 'Server is alive!' });
-});
-// ============================================
 
 // 404 handler for undefined routes
 app.use((req, res) => {
