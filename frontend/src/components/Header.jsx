@@ -67,7 +67,7 @@ export default function Header() {
             <span style={{ color: theme.accent }}>{isLight ? "Résumé" : "Résumé"}</span>{" "}
             {isLight ? <em style={{ fontStyle: "italic", fontWeight: 300 }}>Oracle</em> : "Oracle"}
           </div>
-          <div
+          <div className="hidden sm:block"
             style={{
               fontSize: 9,
               letterSpacing: ".22em",
@@ -105,7 +105,7 @@ export default function Header() {
           }}
         >
           <span style={{ fontSize: 14 }}>{isLight ? "🌙" : "🌸"}</span>
-          {isLight ? "Ink & Gold" : "Rose & Blush"}
+          {isLight ? "Ink & Gold" : "Girly"}
         </button>
         <div
           style={{

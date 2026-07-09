@@ -34,7 +34,7 @@ export default function Hero() {
           ...theme.fd,
           margin: 0,
           fontWeight: isLight ? 300 : 300,
-          fontSize: "clamp(38px, 5.5vw, 66px)",
+          fontSize: "clamp(28px, 5.5vw, 66px)",
           lineHeight: 1.1,
           letterSpacing: "-.01em",
           color: theme.text,

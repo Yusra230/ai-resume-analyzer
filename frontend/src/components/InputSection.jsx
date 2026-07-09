@@ -143,7 +143,7 @@ export default function InputSection({
                 <div
                   style={{
                     color: theme.text,
-                    fontSize: 13.5,
+                    fontSize: 10.5,
                     fontWeight: 500,
                     marginBottom: 5,
                     fontFamily: theme.ff.fontFamily,
