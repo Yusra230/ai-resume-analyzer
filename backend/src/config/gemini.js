@@ -8,7 +8,7 @@ if (!process.env.GOOGLE_API_KEY) {
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
 
 const model = genAI.getGenerativeModel({
-  model: 'gemini-2.5-flash',
+  model: process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite',
   generationConfig: {
     temperature: 0.3,
     maxOutputTokens: AI_MAX_OUTPUT_TOKENS, // ✅ now 4096
